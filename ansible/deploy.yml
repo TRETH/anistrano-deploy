@@ -1,0 +1,9 @@
+---
+- hosts: tag_Type_webserver
+
+  vars:
+    # Ansistrano vars
+    ansistrano_deploy_to: "/var/www/project" # Base path to deploy to.
+
+  roles:
+    - { role: ansistrano.deploy }
