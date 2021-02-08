@@ -3,6 +3,8 @@
 
   vars_files:
     - ./vars/vars.yml
+    - ./vars/deploy_vars.yml
+    - ./vars/deploy_vault.yml
 
   pre_tasks:
     - name: Update APT package manager repositories cache
@@ -58,6 +60,25 @@
       apt:
         name: mysql-server
         state: latest
+
+    - name: 'Get {{ database_user }}@{{ database_host_name }} user'
+      become: true
+      become_method: sudo
+      shell: |
+        mysql -u {{ database_user }} -NBe 'SELECT plugin FROM mysql.user WHERE Host="{{ database_host_name }}" AND User = "{{ database_user }}"'
+      failed_when: no
+      changed_when: no
+      register: mysql_plugin_output
+
+    - debug:
+        var: mysql_plugin_output
+
+    - name: 'Set authentication method for user {{ database_user }} to mysql_native_password'
+      become: true
+      become_method: sudo
+      shell: |
+        mysql -u {{ database_user }} -NBe 'USE mysql; UPDATE user SET plugin="mysql_native_password" WHERE User="{{ database_user }}"; FLUSH PRIVILEGES;'
+      when: 'mysql_plugin_output.stdout != "mysql_native_password"'
 
     - name: Add PHP 7 PPA repository
       become: true
@@ -122,6 +143,28 @@
       register: composer_self_update
       changed_when: "'You are already using composer version' not in composer_self_update.stdout"
       #changed_when: "not composer_self_update.stdout|search('You are already using composer version')"
+
+    # Yarn
+    - name: Add Yarn APT key
+      become: true
+      apt_key:
+        url: 'https://dl.yarnpkg.com/debian/pubkey.gpg'
+        state: present
+
+    - name: Add Yarn to the source lists
+      become: true
+      lineinfile:
+        path: '/etc/apt/sources.list.d/yarn.list'
+        regexp: 'deb https://dl.yarnpkg.com/debian/ stable main'
+        line: 'deb https://dl.yarnpkg.com/debian/ stable main'
+        create: yes
+
+    - name: Install Yarn package manager
+      become: true
+      apt:
+        name: yarn
+        state: latest
+        update_cache: yes
 
   post_tasks:
     - name: Upgrade installed packages
