@@ -59,6 +59,17 @@ class DefaultController extends Controller
     }
 
     /**
+     * @Route("/api/videos")
+     */
+    public function videosApiAction()
+    {
+        $videos = $this->getVideoRepository()
+            ->findAll();
+
+        return $this->json(['videos' => $videos]);
+    }
+
+    /**
      * @param Video[] $videos
      *
      * @return array
@@ -119,4 +130,6 @@ class DefaultController extends Controller
     {
         return $this->get('cache.app');
     }
+
+
 }
